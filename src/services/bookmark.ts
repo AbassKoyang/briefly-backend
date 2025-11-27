@@ -24,9 +24,11 @@ export const BookmarkService = {
       createdAt: Date.now(),
     };
     console.log(data)
-
-    await db.collection("bookmarks").add(data);
-
+    try {
+      await db.collection("bookmarks").add(data);
+    } catch (error) {
+      console.error('Error creating bookmark', error)
+    }
     return data;
   },
 
