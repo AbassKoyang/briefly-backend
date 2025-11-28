@@ -6,7 +6,7 @@
   "scripts": {
   "dev": "bun --watch src/index.ts",
   "build": "bun x tsc",   
-  "start": "NODE_ENV=production bun dist/index.js"
+  "start": " bun run src/index.ts"
 },
   "keywords": [],
   "author": "",
