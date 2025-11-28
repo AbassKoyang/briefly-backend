@@ -60,3 +60,38 @@ export async function generateTitle(text: string) {
 
     return fullText;
 }
+
+export async function analyzePage(text: string) {
+    const prompt = `
+        Analyze the following webpage content.
+        Return a JSON object with:
+    
+        {
+          "title": "...",
+          "summary": "...",
+          "tags": ["...", "..."]
+        }
+        
+        The title should reflect the main topic of the page and be suitable as a bookmark title. It should be a short, human-readable title in 2–3 words.. 
+        Examples: "React Docs", "Tailwind CSS", "Frontend Mentor", "Substack Article", "MDN Web Docs". Keep the title concise, capitalized properly, and free of punctuation or extra words.
+
+        The summary should be in 2–3 short sentences sentences.
+        The tags should be no more 3.
+
+    
+        Content:
+        ${text}
+      `
+    const response = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+    console.log(response.text);
+    const raw = response.text || '';
+    const cleaned = raw
+  .replace(/```json/g, "")
+  .replace(/```/g, "")
+  .trim();
+    return JSON.parse(cleaned || '');
+  }
+  
