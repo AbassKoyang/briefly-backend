@@ -1,5 +1,5 @@
-
 export type BookmarkType = {
+    id?: string;
     url: string;
     title: string;
     subTitle: string;
@@ -7,9 +7,11 @@ export type BookmarkType = {
     summary: string;
     userId: string;
     favicon: string;
-    createdAt: Date;
- };
- export type ApiResponse<T> = {
+    createdAt: number;
+    pinned: false;
+    lastViewed: number;
+};
+export type ApiResponse<T> = {
     success: boolean;
     data?: T;
     message?: string;

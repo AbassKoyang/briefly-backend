@@ -1,21 +1,18 @@
 import { analyzePage, generateTitle, summarizePage } from "../lib/ai.js";
 import { db } from "../lib/firestore.js";
+import { BookmarkType } from "../types/index.js";
 import { scrapePage } from "../utils/scrape.js";
 
 export const BookmarkService = {
   async createBookmark({ url, userId } : {url: string; userId: string }) {
     const rawText = await scrapePage(url);
     const {summary, title, tags} = await analyzePage(rawText);
-    // const summary = "This webpage introduces the Play CDN for Tailwind CSS v4.1, detailing how developers can use it to quickly experiment with Tailwind's utility classes directly in the browser without a build step. It provides practical code examples for integrating the CDN script and adding custom CSS, explicitly noting its suitability for development rather than production environments. Additionally, the page serves as a comprehensive reference, listing a vast array of Tailwind's styling capabilities across categories such as layout, typography, backgrounds, effects, and interactivity."
-    // const tags = [ "Tailwind CSS", "CSS Framework", "Front-end Development", "Web Development", "CDN" ]
-    const subTitle = new URL(url).hostname;
-    // const title = 'Tailwind CSS CDN';
-    
+    const subTitle = new URL(url).hostname;    
     const domain = new URL(url).hostname;
     const favicon = `https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
 
 
-    const data = {
+    const data : BookmarkType = {
       url,
       title,
       subTitle,
@@ -24,6 +21,8 @@ export const BookmarkService = {
       userId,
       favicon,
       createdAt: Date.now(),
+      lastViewed: Date.now(),
+      pinned: false,
     };
     console.log(data)
     try {
@@ -34,15 +33,44 @@ export const BookmarkService = {
     return data;
   },
 
-  async getBookmarks(userId: string) {
-    const snapshot = await db
+  async getBookmarks(userId: string, pageParam?: number) {
+    const PAGE_SIZE = 5;
+    let q;
+    if(!pageParam) {
+        q =  db
       .collection("bookmarks")
       .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  },
+      .orderBy("createdAt", "desc").limit(PAGE_SIZE);
+    } else {
+        q =  db
+      .collection("bookmarks")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc").limit(PAGE_SIZE).startAfter(pageParam);
+    }
+    try {
+        const querySnapshot = await q.get();
+        
+        if(!querySnapshot.empty){
+            const bookmarks =  querySnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as BookmarkType[];
+            const lastVisible = querySnapshot ? querySnapshot.docs[querySnapshot.docs.length - 1]?.data().createdAt : null;
+            return {
+                bookmarks,
+                lastVisible
+            }
+        } else {
+            return {
+                bookmarks: [],
+                lastVisible: null
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching  user bookmarks:', error);
+        throw error;
+    }
+},
 
   async deleteBookmark(id: string) {
     await db.collection("bookmarks").doc(id).delete();

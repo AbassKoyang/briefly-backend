@@ -1,5 +1,5 @@
 import { BookmarkService } from "../services/bookmark.js";
-import { ApiResponse } from "../types/index.js";
+import { ApiResponse, BookmarkType } from "../types/index.js";
 
 
 
@@ -22,15 +22,20 @@ export const BookmarksController = {
     }
   },
 
-  list: async ({ params }: any): Promise<ApiResponse<any[]>> => {
+  list: async ({ params, query }: any): Promise<ApiResponse<{bookmarks: BookmarkType[], lastVisible: number}>> => {
     try {
       const userId = params.userId;
+      const pageParam = query.pageParam;
       if (!userId) throw new Error("Missing userId parameter");
 
-      const bookmarks = await BookmarkService.getBookmarks(userId);
+      const {bookmarks, lastVisible} = await BookmarkService.getBookmarks(userId, Number(pageParam));
+      console.log(lastVisible);
       return {
         success: true,
-        data: bookmarks,
+        data: {
+          bookmarks,
+          lastVisible
+        },
       };
     } catch (error: any) {
       console.error("Error listing bookmarks:", error);

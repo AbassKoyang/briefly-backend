@@ -2,7 +2,11 @@ import { db } from "../lib/firestore.js";
 
 export const UserService = {
   async addUser({ uid, name, email, photo } : {uid: string; name: string ; email: string; photo: string}) {
-
+    const userr = await this.getUser(uid);
+    if(userr.id){
+        console.log('User already exists');
+        return;
+    }
 
     const user = {
         uid, name, email, photo,
