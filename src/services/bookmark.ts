@@ -1,5 +1,5 @@
 import { analyzePage, generateTitle, summarizePage } from "../lib/ai.js";
-import { db } from "../lib/firestore.js";
+import { db, FieldValue, firebaseAdmin } from "../lib/firestore.js";
 import { BookmarkType } from "../types/index.js";
 import { scrapePage } from "../utils/scrape.js";
 
@@ -23,6 +23,8 @@ export const BookmarkService = {
       createdAt: Date.now(),
       lastViewed: Date.now(),
       pinned: false,
+      views: 0,
+      archived: false
     };
     console.log(data)
     try {
@@ -34,17 +36,17 @@ export const BookmarkService = {
   },
 
   async getBookmarks(userId: string, pageParam?: number) {
-    const PAGE_SIZE = 5;
+    const PAGE_SIZE = 6;
     let q;
     if(!pageParam) {
         q =  db
       .collection("bookmarks")
-      .where("userId", "==", userId)
+      .where("userId", "==", userId).where("pinned", '==' , false).where("archived", '==', false)
       .orderBy("createdAt", "desc").limit(PAGE_SIZE);
     } else {
         q =  db
       .collection("bookmarks")
-      .where("userId", "==", userId)
+      .where("userId", "==", userId).where("pinned", '==' , false).where("archived", '==', false)
       .orderBy("createdAt", "desc").limit(PAGE_SIZE).startAfter(pageParam);
     }
     try {
@@ -71,10 +73,95 @@ export const BookmarkService = {
         throw error;
     }
 },
+  async getArchivedBookmarks(userId: string, pageParam?: number) {
+    const PAGE_SIZE = 6;
+    let q;
+    if(!pageParam) {
+        q =  db
+      .collection("bookmarks")
+      .where("userId", "==", userId).where("archived", '==', true)
+      .orderBy("createdAt", "desc").limit(PAGE_SIZE);
+    } else {
+        q =  db
+      .collection("bookmarks")
+      .where("userId", "==", userId).where("archived", '==', true)
+      .orderBy("createdAt", "desc").limit(PAGE_SIZE).startAfter(pageParam);
+    }
+    try {
+        const querySnapshot = await q.get();
+        
+        if(!querySnapshot.empty){
+            const bookmarks =  querySnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as BookmarkType[];
+            const lastVisible = querySnapshot ? querySnapshot.docs[querySnapshot.docs.length - 1]?.data().createdAt : null;
+            return {
+                bookmarks,
+                lastVisible
+            }
+        } else {
+            return {
+                bookmarks: [],
+                lastVisible: null
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching archived bookmarks:', error);
+        throw error;
+    }
+},
+
+  async getPinnedBookmarks(userId: string){
+    try {
+      const snapshot = await db.collection("bookmarks")
+      .where("userId", "==", userId).where("pinned", '==' , true).where("archived", '==', false).orderBy("createdAt", "desc").get();
+      if(!snapshot.empty){
+        const bookmarks =  snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as BookmarkType[];
+        return bookmarks ;
+    } else {
+        return []
+    }
+    } catch (error) {
+      console.error('Error fetching pinned bookmarks:', error);
+      throw error;
+    }
+  },
 
   async deleteBookmark(id: string) {
     await db.collection("bookmarks").doc(id).delete();
     return { success: true };
+  },
+
+  async incrementViews(id: string) {
+    await db.collection("bookmarks").doc(id).update({
+      views: FieldValue.increment(1),
+      lastViewed: Date.now()
+    });
+  },
+
+  async pinToTop(id: string) {
+    await db.collection("bookmarks").doc(id).update({
+      pinned: true
+    });
+  },
+  async unPin(id: string) {
+    await db.collection("bookmarks").doc(id).update({
+      pinned: false
+    });
+  },
+  async archiveBookmark(id: string) {
+    await db.collection("bookmarks").doc(id).update({
+      archived: true
+    });
+  },
+  async unarchiveBookmark(id: string) {
+    await db.collection("bookmarks").doc(id).update({
+      archived: false
+    });
   },
 };
 

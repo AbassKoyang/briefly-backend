@@ -10,6 +10,8 @@ export type BookmarkType = {
     createdAt: number;
     pinned: false;
     lastViewed: number;
+    views:  number;
+    archived: boolean;
 };
 export type ApiResponse<T> = {
     success: boolean;
